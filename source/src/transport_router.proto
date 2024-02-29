@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package transport_router_pb;
+
+import "graph.proto";
+
+message StopWithId {
+    string name = 1;
+    int32  id   = 2;
+}
+
+message TransportRouter {
+    repeated StopWithId stop_with_ids    = 1;
+    graph_pb.Graph      graph            = 2;
+    RoutingSettings     routing_settings = 3;
+}
+
+message RoutingSettings {
+    int32  wait_time = 1;
+    double velocity  = 2;
+}
