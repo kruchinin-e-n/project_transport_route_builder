@@ -1,3 +1,0 @@
-/home/kruchinin/projects/router/build-source-Desktop-Debug/CMakeFiles/transport_catalogue.dir
-/home/kruchinin/projects/router/build-source-Desktop-Debug/CMakeFiles/edit_cache.dir
-/home/kruchinin/projects/router/build-source-Desktop-Debug/CMakeFiles/rebuild_cache.dir
