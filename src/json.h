@@ -9,94 +9,130 @@
 // external (out of transport catalogue) json library - implementation
 
 namespace ext_libs {
+namespace json {
 
-	namespace json {
+class Node;
 
-		class Node;
+using Dict = std::map<std::string, Node>;
+using Array = std::vector<Node>;
 
-		using Dict	= std::map <std::string, Node>;
-		using Array = std::vector <Node>;
+class ParsingError : public std::runtime_error {
+  public:
+  using runtime_error::runtime_error;
+};
 
-		class ParsingError : public std::runtime_error {
-			public:
-			using runtime_error::runtime_error;
-		};
+class Node : private std::variant
+    <std::nullptr_t, std::string, int, size_t, double, bool, Array, Dict> {
+  public:
 
-		class Node : private std::variant <std::nullptr_t, std::string, int, size_t, double, bool, Array, Dict> {
-			public:
-			using variant::variant;
-			using Value = variant;
+  using variant::variant;
+  using Value = variant;
 
-			bool IsNull       () const;
-			bool IsString     () const;
-			bool IsInt        () const;
-			bool IsBool       () const;
-			bool IsArray      () const;
-			bool IsMap        () const;
-			bool IsDouble     () const;
-			bool IsPureDouble () const;
+  bool IsNull() const;
 
-			const std::string& AsString () const;
-			int                AsInt    () const;
-			bool               AsBool   () const;
-			const Array&       AsArray  () const;
-			const Dict&        AsMap    () const;
-			double             AsDouble () const;
+  bool IsString() const;
 
-			const Value& GetValue() const;
-			Value&       GetValue();
+  bool IsInt() const;
 
-			bool operator==(const Node& rhs) const;
-			
-			private:
-			Value value_;
-		};
+  bool IsBool() const;
 
-		bool operator!=(const Node & lhs, const Node & rhs);
+  bool IsArray() const;
 
-		class Document {
-			public:
-			explicit Document(Node root);
-			const Node& GetRoot() const;
+  bool IsMap() const;
 
-			private:
-			Node root_;
-		};
+  bool IsDouble() const;
 
-		bool operator==(const Document& lhs, const Document& rhs);
-		bool operator!=(const Document& lhs, const Document& rhs);
+  bool IsPureDouble() const;
 
-		Document    Parse        (std::istream& input);
-		Node        ParseNode    (std::istream& input);
-		Node        ParseNumber  (std::istream& input);
-		Node        ParseNull    (std::istream& input);
-		Node        ParseBool    (std::istream& input);
-		Node        ParseArray   (std::istream& input);
-		Node        ParseDict    (std::istream& input);
-		Node        ParseNode    (std::istream& input);
-		std::string ParseString  (std::istream& input);
-		std::string ParseLiteral (std::istream& input);
+  const std::string& AsString() const;
 
-		struct OutputContext {
-			std::ostream& out;
-			int indent_step = 4;
-			int indent = 0;
+  int AsInt() const;
 
-			void OutputIndent() const {for (int i = 0; i < indent; ++i) {out.put(' ');}}
-			OutputContext Indented() const {return {out, indent_step, indent_step + indent};}
-		};
+  bool AsBool() const;
 
-		template <typename Value>
-		void OutputValue(const Value& value, const OutputContext& ctx) {ctx.out << value;}
+  const Array& AsArray() const;
 
-		void OutputValue (std::nullptr_t value, const OutputContext& ctx);
-		void OutputValue (std::string    value, const OutputContext& ctx);
-		void OutputValue (bool           value, const OutputContext& ctx);
-		void OutputValue (Array          value, const OutputContext& ctx);
-		void OutputValue (Dict           value, const OutputContext& ctx);
-		void OutputNode	 (const Node&    value, const OutputContext& ctx);
+  const Dict& AsMap() const;
 
-		void Output (const Document& doc, std::ostream& output);
+  double AsDouble() const;
 
-	}  // namespace json - end
+  const Value& GetValue() const;
+
+  Value& GetValue();
+
+  bool operator==(const Node& rhs) const;
+
+  private:
+  Value value_;
+};
+
+  bool operator!=(const Node & lhs, const Node & rhs);
+
+class Document {
+  public:
+  explicit Document(Node root);
+  const Node& GetRoot() const;
+
+  private:
+  Node root_;
+};
+
+  bool operator==(const Document& lhs, const Document& rhs);
+
+  bool operator!=(const Document& lhs, const Document& rhs);
+
+  Document Parse(std::istream& input);
+
+  Node ParseNode(std::istream& input);
+
+  Node ParseNumber(std::istream& input);
+
+  Node ParseNull(std::istream& input);
+
+  Node ParseBool(std::istream& input);
+
+  Node ParseArray(std::istream& input);
+
+  Node ParseDict(std::istream& input);
+
+  Node ParseNode(std::istream& input);
+
+  std::string ParseString(std::istream& input);
+
+  std::string ParseLiteral(std::istream& input);
+
+struct OutputContext {
+  std::ostream& out;
+  int indent_step = 4;
+  int indent = 0;
+
+  void OutputIndent() const {
+    for (int i = 0; i < indent; ++i) { out.put(' '); }
+  }
+
+  OutputContext Indented() const {
+    return { out, indent_step, indent_step + indent };
+  }
+};
+
+template <typename Value>
+void OutputValue(const Value& value, const OutputContext& ctx) {
+  ctx.out << value;
+}
+
+void OutputValue(std::nullptr_t value, const OutputContext& ctx);
+
+void OutputValue(std::string value, const OutputContext& ctx);
+
+void OutputValue(bool value, const OutputContext& ctx);
+
+void OutputValue(Array value, const OutputContext& ctx);
+
+void OutputValue(Dict value, const OutputContext& ctx);
+
+void OutputNode(const Node& value, const OutputContext& ctx);
+
+void Output(const Document& doc, std::ostream& output);
+
+} // namespace json - end
 } // namespace external_libraries - end

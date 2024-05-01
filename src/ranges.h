@@ -7,27 +7,29 @@
 
 namespace ext_libs {
 
-    namespace ranges {
+namespace ranges {
 
-        template <typename It>
-        class Range {
-            public:
-            using ValueType = typename std::iterator_traits<It>::value_type;
+template <typename It> class Range {
+  public:
 
-            Range(It begin, It end) : begin_(begin), end_(end) {}
+  using ValueType = typename std::iterator_traits<It>::value_type;
 
-            It begin () const {return begin_;}
-            It end   () const {return end_  ;}
+  Range(It begin, It end) : begin_(begin), end_(end){}
 
-            private:
-            It begin_;
-            It end_;
-        };
+  It begin() const { return begin_; }
 
-        template <typename C>
-        auto AsRange(const C& container) {
-            return Range{container.begin(), container.end()};
-        }
+  It end() const { return end_; }
 
-    }  // namespace ranges - end
+  private:
+
+  It begin_;
+  It end_;
+};
+
+template<typename C>
+auto AsRange(const C & container) {
+  return Range{ container.begin(), container.end() };
+}
+
+} // namespace ranges - end
 } // namespace ext_libs - end

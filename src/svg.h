@@ -12,234 +12,250 @@
 
 namespace ext_libs {
 
-    namespace svg {
+namespace svg {
 
-        // Red Green Blue
+// Red Green Blue
 
-        struct RGB {
+struct RGB {
+  RGB() = default;
+  RGB(int red, int green, int blue) : red(red), green(green), blue(blue) {}
 
-            RGB() = default;
-            RGB(int red, int green, int blue) : red(red), green(green), blue(blue) {}
+  int red = 0;
+  int green = 0;
+  int blue = 0;
+};
 
-            int red = 0;
-            int green = 0;
-            int blue = 0;
-        };
+// Red Green Blue Opacity
 
-        // Red Green Blue Opacity
+struct RGBO : public RGB {
+  RGBO(int red, int green, int blue, double opacity)
+    : RGB(red, green, blue), opacity(opacity)
+  {}
 
-        struct RGBO : public RGB {
+  double opacity = 1.0;
+};
 
-            RGBO(int red, int green, int blue, double opacity) : RGB(red, green, blue), opacity(opacity) {}
+using Color = std::variant<std::monostate, std::string, RGB, RGBO>;
 
-            double opacity = 1.0;
-        };
+inline const Color NoneColor{ std::monostate() };
 
-        using Color = std::variant<std::monostate, std::string, RGB, RGBO>;
+std::ostream& operator<<(std::ostream& out, Color& color);
 
-        inline const Color NoneColor{ std::monostate() };
+struct OutputColor {
+  std::ostream& out;
+  void operator()(std::monostate) const { out << "none"; }
 
-        std::ostream& operator<<(std::ostream& out, Color& color);
+  void operator()(std::string color) const { out << color; }
 
-        struct OutputColor {
-            std::ostream& out;
-            void operator() (std::monostate   ) const { out << "none"; }
-            void operator() (std::string color) const { out << color ; }
-            void operator() (RGB color        ) const {
-                out << "rgb(" << static_cast<int>(color.red) 
-                    << ","    << static_cast<int>(color.green) 
-                    << ","    << static_cast<int>(color.blue) 
-                    << ")";
-            }
-            void operator()(RGBO color) const {
-                out << "rgba(" << static_cast<int>(color.red) 
-                    << ","     << static_cast<int>(color.green) 
-                    << ","     << static_cast<int>(color.blue) 
-                    << ","     << color.opacity 
-                    << ")";
-            }
-        };
+  void operator()(RGB color) const {
+    out << "rgb("
+        << static_cast<int>(color.red)
+        << ","
+        << static_cast<int>(color.green)
+        << ","
+        << static_cast<int>(color.blue)
+        << ")";
+  }
 
-        enum class StrokeLineCap { BUTT, ROUND, SQUARE };
-        enum class StrokeLineJoin { ARCS, BEVEL, MITER, MITER_CLIP, ROUND };
+  void operator()(RGBO color) const {
+    out << "rgba("
+        << static_cast<int>(color.red)
+        << ","
+        << static_cast<int>(color.green)
+        << ","
+        << static_cast<int>(color.blue)
+        << ","
+        << color.opacity
+        << ")";
+  }
+};
 
-        std::ostream& operator<<(std::ostream& out, StrokeLineCap line_cap);
-        std::ostream& operator<<(std::ostream& out, StrokeLineJoin line_join);
+enum class StrokeLineCap { BUTT, ROUND, SQUARE };
 
-        struct Point {
-            Point() = default;
-            Point(double x, double y) : x(x), y(y) {}
-            double x = 0;
-            double y = 0;
-        };
+enum class StrokeLineJoin { ARCS, BEVEL, MITER, MITER_CLIP, ROUND };
 
-        struct OutputContext {
+std::ostream& operator<<(std::ostream& out, StrokeLineCap line_cap);
 
-            OutputContext(std::ostream& out) : out(out) {}
+std::ostream& operator<<(std::ostream& out, StrokeLineJoin line_join);
 
-            OutputContext(std::ostream& out, int indent_step, int indent = 0)
-                : out(out)
-                , indent_step(indent_step)
-                , indent(indent) {
-            }
+struct Point {
+  Point() = default;
+  Point(double x, double y) : x(x), y(y) {}
+  double x = 0;
+  double y = 0;
+};
 
-            OutputContext Indented() const {
-                return { out, indent_step, indent + indent_step };
-            }
+struct OutputContext {
+  OutputContext(std::ostream& out) : out(out) {}
 
-            void OutputIndent() const {
-                for (int i = 0; i < indent; ++i) {
-                    out.put(' ');
-                }
-            }
+  OutputContext(std::ostream& out, int indent_step, int indent = 0)
+    : out(out),
+      indent_step(indent_step),
+      indent(indent) {
+  }
 
-            std::ostream& out;
-            int indent_step = 0;
-            int indent = 0;
-        };
+  OutputContext Indented() const {
+    return { out, indent_step, indent + indent_step };
+  }
 
-        class Object {
-        public:
+  void OutputIndent() const {
+    for (int i = 0; i < indent; ++i) { out.put(' '); }
+  }
 
-            void Output (const OutputContext& ctx) const;
+  std::ostream& out;
+  int indent_step = 0;
+  int indent = 0;
+};
 
-            virtual ~Object() = default;
+class Object {
+  public:
 
-        private:
+  void Output (const OutputContext& ctx) const;
 
-            virtual void OutputObj(const OutputContext& ctx) const = 0;
-        };
+  virtual ~Object() = default;
 
-        class ObjectContainer {
-        public:
+  private:
 
-            template <typename DrawableObj>
-            void Add(DrawableObj obj) { AddPtr(std::make_unique<DrawableObj>(std::move(obj))); }
-            virtual void AddPtr(std::unique_ptr<Object>&& obj) = 0;
+  virtual void OutputObj(const OutputContext& ctx) const = 0;
+};
 
-        protected:
-            ~ObjectContainer() = default;
-        };
+class ObjectContainer {
+  public:
 
-        class Drawable {
-        public:
-            virtual ~Drawable() = default;
-            virtual void Draw(ObjectContainer& container) const = 0;
-        };
+  template <typename DrawableObj>
+  void Add(DrawableObj obj) {
+    AddPtr(std::make_unique<DrawableObj>(std::move(obj)));
+  }
 
-        template <typename ChainingObj>
-        class PathProps {
-        public:
-            ChainingObj& SetFillColor(Color color) {
-                fill_color_ = std::move(color);
-                return ChainingProps();
-            }
-            ChainingObj& SetStrokeColor(Color color) {
-                stroke_color_ = std::move(color);
-                return ChainingProps();
-            }
-            ChainingObj& SetStrokeWidth(double width) {
-                width_ = std::move(width);
-                return ChainingProps();
-            }
-            ChainingObj& SetStrokeLineCap(StrokeLineCap line_cap) {
-                line_cap_ = line_cap;
-                return ChainingProps();
-            }
-            ChainingObj& SetStrokeLineJoin(StrokeLineJoin line_join) {
-                line_join_ = line_join;
-                return ChainingProps();
-            }
+  virtual void AddPtr(std::unique_ptr<Object>&& obj) = 0;
 
-        protected:
-            ~PathProps() = default;
+  protected:
+  ~ObjectContainer() = default;
+};
 
-            void OutputPathProps(std::ostream& out) const {
-                using namespace std::literals;
+class Drawable {
+  public:
+  virtual ~Drawable() = default;
+  virtual void Draw(ObjectContainer& container) const = 0;
+};
 
-                if (fill_color_) {
-                    out << " fill=\""sv;
-                    std::visit(OutputColor{ out }, *fill_color_);
-                    out << "\""sv;
-                }
-                if (line_cap_) {
-                    out << " stroke-linecap=\""sv << *line_cap_ << "\""sv;
-                }
-                if (line_join_) {
-                    out << " stroke-linejoin=\""sv << *line_join_ << "\""sv;
-                }
-                if (stroke_color_) {
-                    out << " stroke=\""sv;
-                    std::visit(OutputColor{ out }, *stroke_color_);
-                    out << "\""sv;
-                }
-                if (width_) {
-                    out << " stroke-width=\""sv << *width_ << "\""sv;
-                }
-            }
+template <typename ChainingObj>
+class PathProps {
+  public:
+  ChainingObj& SetFillColor(Color color) {
+    fill_color_ = std::move(color);
+    return ChainingProps();
+  }
 
-        private:
-            ChainingObj& ChainingProps() {
-                return static_cast<ChainingObj&>(*this);
-            }
+  ChainingObj& SetStrokeColor(Color color) {
+    stroke_color_ = std::move(color);
+    return ChainingProps();
+  }
 
-            std::optional<Color> fill_color_;
-            std::optional<Color> stroke_color_;
-            std::optional<double> width_;
-            std::optional<StrokeLineCap> line_cap_;
-            std::optional<StrokeLineJoin> line_join_;
-        };
+  ChainingObj& SetStrokeWidth(double width) {
+    width_ = std::move(width);
+    return ChainingProps();
+  }
 
-        class Circle final : public Object, public PathProps<Circle> {
-        public:
-            Circle& SetCenter(Point center);
-            Circle& SetRadius(double radius);
+  ChainingObj& SetStrokeLineCap(StrokeLineCap line_cap) {
+    line_cap_ = line_cap;
+    return ChainingProps();
+  }
 
-        private:
-            void OutputObj(const OutputContext& ctx) const override;
+  ChainingObj& SetStrokeLineJoin(StrokeLineJoin line_join) {
+    line_join_ = line_join;
+    return ChainingProps();
+  }
 
-            Point center_;
-            double radius_ = 1.0;
-        };
+  protected:
+  ~PathProps() = default;
 
-        class Polyline final : public Object, public PathProps<Polyline> {
-        public:
-            Polyline& AddPoint(Point point);
+  void OutputPathProps(std::ostream& out) const {
+    using namespace std::literals;
 
-        private:
-            void OutputObj(const OutputContext& ctx) const override;
-            std::vector<Point> points_;
-        };
+    if (fill_color_) {
+      out << " fill=\""sv;
+      std::visit(OutputColor{ out }, *fill_color_);
+      out << "\""sv;
+    }
+    if (line_cap_) {
+      out << " stroke-linecap=\""sv << *line_cap_ << "\""sv;
+    }
+    if (line_join_) {
+      out << " stroke-linejoin=\""sv << *line_join_ << "\""sv;
+    }
+    if (stroke_color_) {
+      out << " stroke=\""sv;
+      std::visit(OutputColor{ out }, *stroke_color_);
+      out << "\""sv;
+    }
+    if (width_) {
+      out << " stroke-width=\""sv << *width_ << "\""sv;
+    }
+  }
 
-        class Text final : public Object, public PathProps<Text> {
-        public:
+  private:
+  ChainingObj& ChainingProps() {
+    return static_cast<ChainingObj&>(*this);
+  }
 
-            Text& SetPosition(Point pos);
-            Text& SetOffset(Point offset);
-            Text& SetFontSize(uint32_t size);
-            Text& SetFontFamily(std::string font_family);
-            Text& SetFontWeight(std::string font_weight);
-            Text& SetData(std::string data);
+  std::optional<Color> fill_color_;
+  std::optional<Color> stroke_color_;
+  std::optional<double> width_;
+  std::optional<StrokeLineCap> line_cap_;
+  std::optional<StrokeLineJoin> line_join_;
+};
 
-        private:
-            void OutputObj(const OutputContext& ctx) const override;
+class Circle final : public Object, public PathProps<Circle> {
+  public:
+  Circle& SetCenter(Point center);
+  Circle& SetRadius(double radius);
 
-            Point pos_ = { 0.0, 0.0 };
-            Point offset_ = { 0.0, 0.0 };
-            uint32_t size_ = 1;
-            std::string font_family_;
-            std::string font_weight_;
-            std::string data_;
-        };
+  private:
+  void OutputObj(const OutputContext& ctx) const override;
 
-        class Document : public ObjectContainer {
-        public:
-            void AddPtr(std::unique_ptr<Object>&& obj) override;
-            void Output(std::ostream& out) const;
+  Point center_;
+  double radius_ = 1.0;
+};
 
-        private:
-            std::vector<std::unique_ptr<Object>> objects_;
-        };
+class Polyline final : public Object, public PathProps<Polyline> {
+  public:
+  Polyline& AddPoint(Point point);
 
-    }  // namespace svg - end
+  private:
+  void OutputObj(const OutputContext& ctx) const override;
+  std::vector<Point> points_;
+};
+
+class Text final : public Object, public PathProps<Text> {
+  public:
+
+  Text& SetPosition(Point pos);
+  Text& SetOffset(Point offset);
+  Text& SetFontSize(uint32_t size);
+  Text& SetFontFamily(std::string font_family);
+  Text& SetFontWeight(std::string font_weight);
+  Text& SetData(std::string data);
+
+  private:
+  void OutputObj(const OutputContext& ctx) const override;
+
+  Point pos_ = { 0.0, 0.0 };
+  Point offset_ = { 0.0, 0.0 };
+  uint32_t size_ = 1;
+  std::string font_family_;
+  std::string font_weight_;
+  std::string data_;
+};
+
+class Document : public ObjectContainer {
+  public:
+  void AddPtr(std::unique_ptr<Object>&& obj) override;
+  void Output(std::ostream& out) const;
+
+  private:
+  std::vector<std::unique_ptr<Object>> objects_;
+};
+
+} // namespace svg - end
 } // namespace ext_libs - end

@@ -28,7 +28,6 @@
 
 namespace transport_catalogue {
 
-	namespace dom_ents {
-
-	} // namespace dom_ents - end
+namespace dom_ents {
+} // namespace dom_ents - end
 } // namespace transport_catalogue - end

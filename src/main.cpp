@@ -33,59 +33,84 @@
 using namespace std::literals;
 
 void PrintUsage(std::ostream& stream = std::cerr) {
-    stream << "Usage: transport_catalogue [make_base|process_requests]\n";
+  stream << "Usage: transport_catalogue [make_base|process_requests]\n";
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 2) {
-        PrintUsage();
-        return 1;
+  if (argc != 2) {
+    PrintUsage();
+    return 1;
+  }
+
+  const std::string_view mode(argv[1]);
+
+  if (mode == "make_base"sv) {
+    // json input
+    transport_catalogue::infrastructure::JsonReader request(std::cin);
+
+    // --- fill catalogue ---
+    transport_catalogue::business_logic::TransportCatalogue transport_catalogue;
+
+    request.ProcessInputCatalogueData(transport_catalogue);
+
+    // --- fill router ---
+    const auto& routing_settings =
+        request.ProcessInputRoutingSettings(request.ProcessRoutingSettings());
+
+    const transport_catalogue::infrastructure
+        ::TransportRouter transport_router =
+            { routing_settings, transport_catalogue };
+
+    // --- fill renderer ---
+    const auto& output_settings = request.ProcessOutputSettings();
+    const transport_catalogue::infrastructure
+        ::MapOutputOperator map_output_operator =
+            request.ProcessInputOutputData(output_settings.AsMap());
+
+    // --- fill serialization ---
+    const auto& serialization_settings = request.ProcessSerializationSettings();
+
+    // --- serialize base into file ---
+    std::ofstream output_file(
+        serialization_settings.AsMap().at("file"s).AsString(),
+        std::ios::binary);
+
+    if (output_file.is_open()) {
+      transport_catalogue::infrastructure
+          ::protobuf::Serialize(transport_catalogue,
+                                map_output_operator,
+                                transport_router,
+                                output_file);
     }
 
-    const std::string_view mode(argv[1]);
+  }
+  else if (mode == "process_requests"sv) {
 
-    if (mode == "make_base"sv) {
+    // json input
+    transport_catalogue::infrastructure::JsonReader request(std::cin);
 
-        transport_catalogue::infrastructure::JsonReader request(std::cin); // json input
+    // --- deserialize transport base from file ---
+    std::ifstream transport_catalogue_bin(
+        request.ProcessSerializationSettings().AsMap().at("file"s).AsString(),
+        std::ios::binary);
 
-        // --- fill catalogue
-        transport_catalogue::business_logic::TransportCatalogue transport_catalogue;;
-        request.ProcessInputCatalogueData(transport_catalogue);
+    if (transport_catalogue_bin) {
+      auto [transport_catalogue, map_output_operator,
+            router, graph, stop_name_to_ids ] =
+                transport_catalogue::infrastructure::protobuf::Deserialize(
+                    transport_catalogue_bin);
 
-        // --- fill router ---
-        const auto& routing_settings = request.ProcessInputRoutingSettings(request.ProcessRoutingSettings());
-        const transport_catalogue::infrastructure::TransportRouter transport_router = { routing_settings, transport_catalogue };
+      router.SetGraph(graph, stop_name_to_ids);
+      transport_catalogue::infrastructure::RequestHandler request_handler =
+          { map_output_operator,transport_catalogue, router };
 
-        // --- fill renderer ---
-        const auto& output_settings = request.ProcessOutputSettings();
-        const transport_catalogue::infrastructure::MapOutputOperator map_output_operator = request.ProcessInputOutputData(output_settings.AsMap());
-
-        // --- fill serialization ---
-        const auto& serialization_settings = request.ProcessSerializationSettings();
-
-        // --- serialize base into file ---
-        std::ofstream output_file(serialization_settings.AsMap().at("file"s).AsString(), std::ios::binary);
-        if (output_file.is_open()) { transport_catalogue::infrastructure::protobuf::Serialize(transport_catalogue, map_output_operator, transport_router, output_file); }
-
+      // --- processing requests ---
+      const auto& stat_requests = request.ProcessStatRequests();
+      request.ProcessStatRequestToOutput(stat_requests, request_handler);
     }
-    else if (mode == "process_requests"sv) {
-
-        transport_catalogue::infrastructure::JsonReader request(std::cin); // json input
-
-        // --- deserialize transport base from file ---
-        std::ifstream transport_catalogue_bin(request.ProcessSerializationSettings().AsMap().at("file"s).AsString(), std::ios::binary);
-        if (transport_catalogue_bin) {
-            auto [transport_catalogue, map_output_operator, router, graph, stop_name_to_ids ] = transport_catalogue::infrastructure::protobuf::Deserialize(transport_catalogue_bin);
-            router.SetGraph(graph, stop_name_to_ids);
-            transport_catalogue::infrastructure::RequestHandler request_handler = { map_output_operator,transport_catalogue, router };
-
-        // --- processing requests ---
-            const auto& stat_requests = request.ProcessStatRequests();
-            request.ProcessStatRequestToOutput(stat_requests, request_handler);
-        }
-    }
-    else {
-        PrintUsage();
-        return 1;
-    }
+  }
+  else {
+    PrintUsage();
+    return 1;
+  }
 }
